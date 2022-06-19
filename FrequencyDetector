@@ -1,0 +1,116 @@
+int radioHigh;
+int radioLow;
+float radioTotal;
+float radioFrequency;
+
+int hallSensorPin = 0;
+int detectPin = 13;
+float voltage;
+float neutral;
+int check = 0;
+float total;
+
+int infHigh;
+int infLow;
+float infTotal;
+float infFrequency;
+
+int acousticHigh;
+int acousticLow;
+float acousticTotal;
+float acousticFrequency;
+
+bool inputSignal = true;
+bool gaborium = false;
+bool lathwaite = false;
+bool adamntine = false;
+bool xiran = false;
+bool netherite = false;
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  Serial.begin(9600);
+  pinMode(2, INPUT);
+  pinMode(3, INPUT);
+  pinMode(4, INPUT);
+  pinMode(5, INPUT);
+  pinMode(6, INPUT);
+  delay(5000);
+  for(int i = 0; i < 100; i++){
+    total = total + analogRead(hallSensorPin);
+  }
+  neutral = total / 100;
+}
+
+//note Client will be declared in the full code for the rover
+
+void loop() {
+  // put your main code here, to run repeatedly:
+    voltage = analogRead(hallSensorPin);
+    
+    acousticHigh = pulseIn(4, HIGH);
+    acousticLow = pulseIn(4, LOW);
+    acousticTotal = acousticLow + acousticHigh;
+    acousticFrequency = 1000 / acousticTotal; //frequncy in KHz
+    radioHigh = pulseIn(3, HIGH);
+    radioLow = pulseIn(3, LOW);  
+    radioTotal = radioHigh + radioLow;
+    radioFrequency = 1000000 / radioTotal; // frequency in HZ
+    infHigh = pulseIn(5, HIGH);
+    infLow = pulseIn(5, LOW);
+    infTotal = infLow + infHigh;
+    infFrequency = 1000000 / infTotal;
+    if(digitalRead(detectPin) == HIGH){
+      check = 1;
+      if(voltage > neutral + 4){
+        Serial.print("south\n");
+        client.println("south\n");
+        if((radioFrequency >= 234) && (radioFrequency <= 244)){
+          xiran = true;
+          String writeFreq = String(radioFrequency);
+          client.println("Modulated frequency from radio sensor is " + writeFreq + " Hz and rock is xiran");
+        }
+      }
+      else if (voltage < neutral - 4){
+        Serial.print("north\n");
+        client.println("north\n");
+        if((radioFrequency >= 146) && (radioFrequency <= 156)){
+          adamantine = true;
+          String writeFreq = String(radioFrequency);
+          client.println("Modulated frequency from radio sensor is " + writeFreq + " Hz and rock is adamantine");
+        }
+      }
+    }
+    else if((acousticFrequency >= 38) && (acousticFrequency <= 42)){
+      client.println("Frequency from acoustic sensor is " + writeFreq + " KHz");
+      if((radioFrequency >= 146) && (radioFrequency <= 156)){
+        gaborium = true;
+        String writeFreq = String(radioFrequency);
+        client.println("Modulated frequency from radio sensor is " + writeFreq + " Hz and rock is gaborium");
+      }
+      else if((infFrequency >= 566) && (infFrequency <= 576)){
+          netherite = true;
+          String writeFreq = String(infFrequency);
+          client.println("Pulse frequency from infrared sensor is " + writeFreq + " Hz and rock is netherite");
+      }
+    }
+    else{
+        if((radioFrequency >= 234) && (radioFrequency <= 244)){
+          lathwaite = true;
+          String writeFreq = String(radioFrequency);
+          client.println("Modulated frequency from radio sensor is " + writeFreq + " Hz and rock is lathwaite");
+        }
+        else if((infFrequency >= 348) && (infFrequency <= 358)){
+          thiotimoline = true;
+          String writeFreq = String(infFrequency);
+          client.println("Pulse frequency from infrared sensor is " + writeFreq + " Hz and rock is thiotimoline");
+        }
+    }
+        
+      
+   // String writeFreq = String(frequency);
+   // String writeFreq = String(frequency);
+   // client.println("Frequency from radio sensor is " + writeFreq + " Hz");
+    delay(3000);
+}
