@@ -23,9 +23,10 @@ float acousticFrequency;
 bool inputSignal = true;
 bool gaborium = false;
 bool lathwaite = false;
-bool adamntine = false;
+bool adamantine = false;
 bool xiran = false;
 bool netherite = false;
+bool thiotimoline = false;
 
 void setup() {
   // put your setup code here, to run once:
@@ -83,6 +84,7 @@ void loop() {
       }
     }
     else if((acousticFrequency >= 38) && (acousticFrequency <= 42)){
+      String writeFreq = String(acousticFrequency);
       client.println("Frequency from acoustic sensor is " + writeFreq + " KHz");
       if((radioFrequency >= 146) && (radioFrequency <= 156)){
         gaborium = true;
@@ -107,10 +109,5 @@ void loop() {
           client.println("Pulse frequency from infrared sensor is " + writeFreq + " Hz and rock is thiotimoline");
         }
     }
-        
-      
-   // String writeFreq = String(frequency);
-   // String writeFreq = String(frequency);
-   // client.println("Frequency from radio sensor is " + writeFreq + " Hz");
     delay(3000);
 }
