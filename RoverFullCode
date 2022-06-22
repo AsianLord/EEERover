@@ -31,7 +31,6 @@ float infTotal;
 float infFrequency;
 
 int acousticHigh;
-int acousticLow;
 float acousticTotal;
 float acousticFrequency;
 
@@ -53,14 +52,14 @@ void setup() {
   pinMode(3, INPUT);
   pinMode(4, INPUT);
   pinMode(5, INPUT);
-  pinMode(6, INPUT);
+  pinMode(detectPin, INPUT);
   Serial.begin(9600);
   //while (!Serial) {
   //  ; // wait for serial port to connect. Needed for native USB port only
   //}
   pinMode(led, OUTPUT);
 
-  WiFi.config(IPAddress(192, 168, 247, 182));
+  WiFi.config(IPAddress(192, 168, 245, 182));
   
   // check for the presence of the shield:
   if (WiFi.status() == WL_NO_SHIELD) {
@@ -99,16 +98,16 @@ void loop() {
     while (client.connected()) {            // loop while the client's connected
       voltage = analogRead(hallSensorPin);
     
-      acousticHigh = pulseIn(4, HIGH);
-      acousticLow = pulseIn(4, LOW);
-      acousticTotal = acousticLow + acousticHigh;
-      acousticFrequency = 1000 / acousticTotal; //frequncy in KHz
+      //acousticHigh = pulseIn(4, HIGH);
+      //acousticLow = pulseIn(4, LOW);
+      acousticHigh = digitalRead(6);
+      //acousticFrequency = 1000 / acousticTotal; //frequncy in KHz
       radioHigh = pulseIn(3, HIGH);
       radioLow = pulseIn(3, LOW);  
       radioTotal = radioHigh + radioLow;
       radioFrequency = 1000000 / radioTotal; // frequency in HZ
-      infHigh = pulseIn(5, HIGH);
-      infLow = pulseIn(5, LOW);
+      infHigh = pulseIn(8, HIGH);
+      infLow = pulseIn(8, LOW);
       infTotal = infLow + infHigh;
       infFrequency = 1000000 / infTotal;
       if(digitalRead(detectPin) == HIGH){
@@ -132,18 +131,18 @@ void loop() {
           }
         }
       }
-      else if((acousticFrequency >= 38) && (acousticFrequency <= 42)){
-        String writeFreq = String(acousticFrequency);
-        client.println("Frequency from acoustic sensor is " + writeFreq + " KHz");
+      else if(acousticHigh == HIGH){
         if((radioFrequency >= 146) && (radioFrequency <= 156)){
           gaborium = true;
           String writeFreq = String(radioFrequency);
           client.println("Modulated frequency from radio sensor is " + writeFreq + " Hz and rock is gaborium");
+          Serial.print("Modulated frequency from radio sensor is " + writeFreq + " Hz and rock is gaborium");
         }
         else if((infFrequency >= 566) && (infFrequency <= 576)){
           netherite = true;
           String writeFreq = String(infFrequency);
           client.println("Pulse frequency from infrared sensor is " + writeFreq + " Hz and rock is netherite");
+          Serial.print("Pulse frequency from infrared sensor is " + writeFreq + " Hz and rock is netherite");
         }
       }
       else{
