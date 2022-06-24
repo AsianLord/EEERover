@@ -1,5 +1,9 @@
 #include <SPI.h>
 #include <WiFi101.h>
+#include <Servo.h>
+
+Servo myservo;  // create servo object to control a servo
+int pos = 0;    // variable to store the servo position
 
 
 #include "arduino_secrets.h" 
@@ -9,14 +13,10 @@ char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as k
 int keyIndex = 0;                 // your network key Index number (needed only for WEP)
 
 int status = WL_IDLE_STATUS;
-int LM = 0;
-int RM = 1;
-int led =  LED_BUILTIN;
+int LM = 1;
+int RM = 0;
 
-int radioHigh;
-int radioLow;
-float radioTotal;
-float radioFrequency;
+bool acoustic = false;
 
 int hallSensorPin = 0;
 int detectPin = 13;
@@ -25,43 +25,38 @@ float neutral;
 int check = 0;
 float total;
 
+
+int radioHigh;
+int radioLow;
+int radioPin = 8;
+float radioTotal;
+float radioFrequency;
+
 int infHigh;
 int infLow;
+int infPin = 2;
 float infTotal;
 float infFrequency;
 
-int acousticHigh;
-float acousticTotal;
-float acousticFrequency;
+const int trigPin = 11;
+const int echoPin = 12;
 
-bool inputSignal = true;
-bool gaborium = false;
-bool lathwaite = false;
-bool adamantine = false;
-bool xiran = false;
-bool netherite = false;
-bool thiotimoline = false;
+bool rockFound = false;
 
 WiFiServer server(80);
 
-void setup() {
-  //Initialize serial and wait for port to open:
-  pinMode(LM, OUTPUT);
-  pinMode(RM, OUTPUT);
-  pinMode(2, INPUT);
-  pinMode(3, INPUT);
-  pinMode(4, INPUT);
-  pinMode(5, INPUT);
-  pinMode(detectPin, INPUT);
-  Serial.begin(9600);
-  //while (!Serial) {
-  //  ; // wait for serial port to connect. Needed for native USB port only
-  //}
-  pinMode(led, OUTPUT);
 
-  WiFi.config(IPAddress(192, 168, 245, 182));
+void setup(){
+  // put your setup code here, to run once:
+  myservo.attach(9); 
+  pinMode(infPin, INPUT);
+  pinMode(radioPin, INPUT);
+  pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
+  pinMode(echoPin, INPUT); // Sets the echoPin as an Input
+
+
+//  WiFi.config(IPAddress(192, 168, 245, 182));
   
-  // check for the presence of the shield:
   if (WiFi.status() == WL_NO_SHIELD) {
     Serial.println("WiFi shield not present");
     // don't continue:
@@ -81,87 +76,21 @@ void setup() {
   server.begin();
   // you're connected now, so print out the status:
   printWiFiStatus();
-  //hall effect
-  for(int i = 0; i < 100; i++){
-    total = total + analogRead(hallSensorPin);
-  }
-  neutral = total / 100;
 }
 
-
 void loop() {
+  // put your main code here, to run repeatedly:
   // listen for incoming clients
   WiFiClient client = server.available();
   if (client) {                             // if you get a client,
     Serial.println("new client");           // print a message out the serial port
     String currentLine = "";                // make a String to hold incoming data from the client
     while (client.connected()) {            // loop while the client's connected
-      voltage = analogRead(hallSensorPin);
-    
-      //acousticHigh = pulseIn(4, HIGH);
-      //acousticLow = pulseIn(4, LOW);
-      acousticHigh = digitalRead(6);
-      //acousticFrequency = 1000 / acousticTotal; //frequncy in KHz
-      radioHigh = pulseIn(3, HIGH);
-      radioLow = pulseIn(3, LOW);  
-      radioTotal = radioHigh + radioLow;
-      radioFrequency = 1000000 / radioTotal; // frequency in HZ
-      infHigh = pulseIn(8, HIGH);
-      infLow = pulseIn(8, LOW);
-      infTotal = infLow + infHigh;
-      infFrequency = 1000000 / infTotal;
-      if(digitalRead(detectPin) == HIGH){
-        check = 1;
-        if(voltage > neutral + 4){
-          Serial.print("south\n");
-          client.println("south\n");
-          if((radioFrequency >= 234) && (radioFrequency <= 244)){
-            xiran = true;
-            String writeFreq = String(radioFrequency);
-            client.println("Modulated frequency from radio sensor is " + writeFreq + " Hz and rock is xiran");
-          }
-        }
-        else if (voltage < neutral - 4){
-          Serial.print("north\n");
-          client.println("north\n");
-          if((radioFrequency >= 146) && (radioFrequency <= 156)){
-            adamantine = true;
-            String writeFreq = String(radioFrequency);
-            client.println("Modulated frequency from radio sensor is " + writeFreq + " Hz and rock is adamantine");
-          }
-        }
-      }
-      else if(acousticHigh == HIGH){
-        if((radioFrequency >= 146) && (radioFrequency <= 156)){
-          gaborium = true;
-          String writeFreq = String(radioFrequency);
-          client.println("Modulated frequency from radio sensor is " + writeFreq + " Hz and rock is gaborium");
-          Serial.print("Modulated frequency from radio sensor is " + writeFreq + " Hz and rock is gaborium");
-        }
-        else if((infFrequency >= 566) && (infFrequency <= 576)){
-          netherite = true;
-          String writeFreq = String(infFrequency);
-          client.println("Pulse frequency from infrared sensor is " + writeFreq + " Hz and rock is netherite");
-          Serial.print("Pulse frequency from infrared sensor is " + writeFreq + " Hz and rock is netherite");
-        }
-      }
-      else{
-          if((radioFrequency >= 234) && (radioFrequency <= 244)){
-            lathwaite = true;
-            String writeFreq = String(radioFrequency);
-            client.println("Modulated frequency from radio sensor is " + writeFreq + " Hz and rock is lathwaite");
-          }
-          else if((infFrequency >= 348) && (infFrequency <= 358)){
-            thiotimoline = true;
-            String writeFreq = String(infFrequency);
-            client.println("Pulse frequency from infrared sensor is " + writeFreq + " Hz and rock is thiotimoline");
-          }
-      }
       if (client.available()) {             // if there's bytes to read from the client,
         char c = client.read();             // read a byte, then
         Serial.write(c);                    // print it out the serial monitor
         if (c == '\n') {                    // if the byte is a newline character
-
+  
           // if the current line is blank, you got two newline characters in a row.
           // that's the end of the client HTTP request, so send a response:
           if (currentLine.length() == 0) {
@@ -170,70 +99,155 @@ void loop() {
             client.println("HTTP/1.1 200 OK");
             client.println("Content-type:text/html");
             client.println();
-
+  
             // the content of the HTTP response follows the header:
-            client.print("Click <a href=\"/F\">here</a> to go forward<br>");
-            client.print("Click <a href=\"/B\">here</a> to stop<br>");
-            client.print("Click <a href=\"/L\">here</a> to go left<br>");
-            client.print("Click <a href=\"/R\">here</a> to go right<br>");
-            
-
+//            client.print("Click <a href=\"/F\">here</a> to go forward<br>");
+//            client.print("Click <a href=\"/B\">here</a> to stop<br>");
+//            client.print("Click <a href=\"/L\">here</a> to go left<br>");
+//            client.print("Click <a href=\"/R\">here</a> to go right<br>");
+              
+  
             // The HTTP response ends with another blank line:
             client.println();
             // break out of the while loop:
             break;
           }
           else {      // if you got a newline, then clear currentLine:
-            currentLine = "";
+              currentLine = "";
           }
         }
         else if (c != '\r') {    // if you got anything else but a carriage return character,
           currentLine += c;      // add it to the end of the currentLine
         }
-
+  
         if (currentLine.endsWith("GET /F"))
         {
-        //Move Forward
+          //Move Forward
           digitalWrite(LM, HIGH);
           digitalWrite(RM, HIGH);
         }
         else if (currentLine.endsWith("GET /S"))
         {
-        //Stop
+          //Stop
           digitalWrite(LM, LOW);
           digitalWrite(RM, LOW);
         }
         else if (currentLine.endsWith("GET /L"))
         {
-        //Left Turn
+          //Left Turn
           digitalWrite(RM, HIGH);
           digitalWrite(LM, LOW);
         }
         else if (currentLine.endsWith("GET /R"))
         {
-        //Right Turn
+          //Right Turn
           digitalWrite(RM, LOW);
           digitalWrite(LM, HIGH);
+        }
+        else if (currentLine.endsWith("GET /M")){
+          //Servo motor
+          for (pos = 0; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
+            // in steps of 1 degree
+            myservo.write(pos);              // tell servo to go to position in variable 'pos'
+            delay(15);                       // waits 15ms for the servo to reach the position
+          }
+          for (pos = 180; pos >= 0; pos -= 1) { // goes from 180 degrees to 0 degrees
+            myservo.write(pos);              // tell servo to go to position in variable 'pos'
+            delay(15);                       // waits 15ms for the servo to reach the position
+          }
+        }
+        else if (currentLine.endsWith("GET /D")){
+          while(rockFound != true){
+            //detectRock();
+            //void detectRock(){
+            infHigh = pulseIn(infPin, HIGH);
+            infLow = pulseIn(infPin, LOW);
+            infTotal = infLow + infHigh;
+            infFrequency = 1000000 / infTotal;
+            
+            radioHigh = pulseIn(radioPin, HIGH);
+            radioLow = pulseIn(radioPin, LOW);  
+            radioTotal = radioHigh + radioLow;
+            radioFrequency = 1000000 / radioTotal;
+          
+            // Clears the trigPin
+            digitalWrite(trigPin, LOW);
+            delayMicroseconds(2);
+            // Sets the trigPin on HIGH state for 10 micro seconds
+            digitalWrite(trigPin, HIGH);
+            delayMicroseconds(10);
+            digitalWrite(trigPin, LOW);
+            // Reads the echoPin, returns the sound wave travel time in microseconds
+            int duration = pulseIn(echoPin, HIGH);
+            // Calculating the distance
+            int distance = duration * 0.034 / 2;
+            // Prints the distance on the Serial Monitor
+            //Serial.print("Distance: ");
+            //Serial.println(distance);
+            if(distance < 45){
+              //Serial.println("detected   ");
+              client.print("Acoustic Detected");
+              acoustic = true;
+            }
+            else{
+              //Serial.println("not   ");
+              client.print("Acoustic Not Detected");
+              acoustic = false;
+            }
+            client.print(String(infFrequency));
+            client.print(String(radioFrequency));
+            voltage = analogRead(hallSensorPin);
+            //Serial.print(voltage);
+            //Serial.print("\n");
+          
+            if (true){
+              if (voltage > neutral + 4){
+                client.print("north mag field\n");
+                if((radioFrequency >= 224) && (radioFrequency <= 254)){
+                  client.print("Rock is xiran");
+                  rockFound = true;
+                }
+              }
+              else if (voltage < neutral - 4){
+                client.print("south mag field\n");
+                  if((radioFrequency >= 146) && (radioFrequency <= 156)){
+                    client.print("Rock is adamantine");
+                  }
+              }
+              else{
+                client.print("neutral\n");
+              }
+            }
+            else if(acoustic == true){
+              if((radioFrequency >= 136) && (radioFrequency <= 166)){
+                rockFound = true;
+                client.print("Rock is gaborium");
+                //Serial.print("Modulated frequency from radio sensor is " + writeFreq + " Hz and rock is gaborium");
+                rockFound = true;
+              }
+              else if((infFrequency >= 556) && (infFrequency <= 586)){
+                client.print("Rock is netherite");
+                //Serial.print("Pulse frequency from infrared sensor is " + writeFreq + " Hz and rock is netherite");
+                rockFound = true;
+              }
+            }
+            else{
+                if((radioFrequency >= 224) && (radioFrequency <= 254)){
+                  rockFound = true;
+                  String writeFreq = String(radioFrequency);
+                  client.print("Rock is lathwaite");
+                  rockFound = true;
+                }
+                else if((infFrequency >= 338) && (infFrequency <= 368)){
+                  String writeFreq = String(infFrequency);
+                  client.print("Rock is thiotimoline");
+                  rockFound = true;
+                }
+            }
+            delay(1);
+          }
         }
       }
     }
   }
-}
-
-
-void printWiFiStatus() {
-  // print the SSID of the network you're attached to:
-  Serial.print("SSID: ");
-  Serial.println(WiFi.SSID());
-
-  // print your WiFi shield's IP address:
-  IPAddress ip = WiFi.localIP();
-  Serial.print("IP Address: ");
-  Serial.println(ip);
-
-  // print the received signal strength:
-  long rssi = WiFi.RSSI();
-  Serial.print("signal strength (RSSI):");
-  Serial.print(rssi);
-  Serial.println(" dBm");
 }
